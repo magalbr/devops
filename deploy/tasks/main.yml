@@ -1,0 +1,48 @@
+---
+- name: Instala o nginx
+  package:
+    name: nginx
+    state: present
+  notify: service nginx
+
+- name: Verifica o IP do container blue
+  shell: docker exec blue hostname -I
+  register: ipblue
+
+
+- name: Verifica qual container esta redirecionado pelo nginx
+  stat:
+    path: /etc/nginx/sites-available/blue.conf
+  register: status
+
+- name: Verifica o IP do container green
+  shell: docker exec green hostname -I
+  register: ipgreen
+
+- block:
+
+  - name: Apaga a configuracao do blue
+    file:
+      path: /etc/nginx/sites-available/blue.conf
+      state: absent
+   
+  - name: Altera a config do Nginx
+    template:
+      src: green.conf
+      dest: /etc/nginx/sites-available/green.conf
+  when: status.stat.exists == True 
+ 
+- block:
+  
+  - name: Apaga a configuracao do green
+    file:
+      path: /etc/nginx/sites-available/green.conf
+      state: absent
+  
+  - name: Altera a configuracao do nginx
+    template:
+      src: blue.conf
+      dest: /etc/nginx/sites-available/blue.conf
+  when: status.stat.exists == False 
+
+- name:    
